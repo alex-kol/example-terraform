@@ -1,0 +1,373 @@
+module "gce-container-mongodb" {
+  source = "terraform-google-modules/container-vm/google"
+  version = "2.0.0"
+
+  container = {
+    image = var.mongo_image
+    args = [
+      "--replSet",
+      var.mongo_replicaset_name,
+      "--bind_ip_all",
+      "--keyFile",
+      "/host-mount/${local.mongo_rs_key_name}"]
+    env = [
+      {
+        name = "MONGO_SERVER_PORT"
+        value = var.mongo_listen_port
+      },
+      {
+        name = "MONGO_INITDB_ROOT_USERNAME"
+        value = var.mongo_user
+      },
+      {
+        name = "MONGO_INITDB_ROOT_PASSWORD"
+        value = var.mongo_password
+      },
+    ],
+
+    # Declare volumes to be mounted.
+    # This is similar to how docker volumes are declared.
+    volumeMounts = [
+      {
+        mountPath = "/data/db"
+        name = "mongo-data"
+        readOnly = false
+      },
+      {
+        mountPath = "/host-mount"
+        name = "mongo-rs-files"
+        readOnly = true
+      }
+    ]
+  }
+
+  # Declare the volumes
+  volumes = [
+    {
+      name = "mongo-data"
+      gcePersistentDisk = {
+        pdName = "data-disk"
+        fsType = "ext4"
+      }
+    },
+    {
+      name = "mongo-rs-files"
+      hostPath = {
+        path = local.mongo_rs_key_location
+      }
+    }
+  ]
+
+  restart_policy = "Always"
+}
+
+locals {
+  additional_metadata = {
+    user-data = data.template_file.mongo_cloud_init_config.rendered
+    google-logging-enabled = "true"
+    google-monitoring-enabled = "true"
+  }
+
+  service_account_scopes = [
+    "https://www.googleapis.com/auth/monitoring.write",
+    "https://www.googleapis.com/auth/cloud-platform",
+    "https://www.googleapis.com/auth/logging.read",
+    "https://www.googleapis.com/auth/logging.write",
+  ]
+
+  mongo_rs_key_location = "/mnt/stateful_partition/mongodb/"
+  mongo_rs_key_name = "rs.key"
+
+  mongodb_uri = "mongodb://${urlencode(var.mongo_user)}:${urlencode(var.mongo_password)}@${google_compute_address.mongodb-primary-internal.address}:${var.mongo_listen_port},${google_compute_address.slave-ip-1.address}:${var.mongo_listen_port},${google_compute_address.slave-ip-2.address}:${var.mongo_listen_port}/${var.mongo_db}?authSource=admin&replicaSet=${var.mongo_replicaset_name}&readPreference=secondaryPreferred"
+
+}
+
+data "template_file" "mongo_init_create_db" {
+  template = file("${path.module}/mongo_create_users.sh.tpl")
+  vars = {
+    username = var.mongo_user
+    password = var.mongo_password
+    database = var.mongo_db
+  }
+}
+
+data "template_file" "mongo_init_rs_command" {
+  template = file("${path.module}/mongo_init_rs.tpl")
+  vars = {
+    host = google_compute_address.mongodb-primary-internal.address
+    host_slave_1 = google_compute_address.slave-ip-1.address
+    host_slave_2 = google_compute_address.slave-ip-2.address
+
+    username = var.mongo_user
+    password = var.mongo_password
+    database = var.mongo_db
+  }
+}
+
+data "template_file" "mongo_cloud_init_config" {
+  template = file("${path.module}/mongo_cloud_init.yaml.tpl")
+  vars = {
+    mongo_rs_key_location = local.mongo_rs_key_location
+    mongo_rs_key_name = local.mongo_rs_key_name
+    rs_key_data = file("${path.module}/mongo_rs.key")
+  }
+}
+
+resource "google_compute_address" "mongodb-primary-internal" {
+  subnetwork = google_compute_subnetwork.vpc-sub-network.id
+  address_type = "INTERNAL"
+  name = "mongodb-primary-internal"
+}
+
+resource "google_compute_disk" "mongodb-primary-disk" {
+  name = "mongodb-primary-disk"
+  type = "pd-ssd"
+  zone = "${var.region}-a"
+  size = var.mongo_disk_size
+  physical_block_size_bytes = 4096
+}
+
+resource "google_compute_resource_policy" "mongodb-backup" {
+  name = "mongodb-backup"
+  region = var.region
+  snapshot_schedule_policy {
+    schedule {
+      daily_schedule {
+        days_in_cycle = 1
+        start_time = "03:00"
+      }
+    }
+    retention_policy {
+      max_retention_days = 14
+      on_source_disk_delete = "APPLY_RETENTION_POLICY"
+    }
+    snapshot_properties {
+      guest_flush = false
+      storage_locations = [
+        var.region]
+    }
+  }
+}
+
+resource "google_compute_disk_resource_policy_attachment" "mongodb-primary-disk-snapshots" {
+  name = google_compute_resource_policy.mongodb-backup.name
+  disk = google_compute_disk.mongodb-primary-disk.name
+  zone = "${var.region}-a"
+}
+
+resource "google_compute_instance" "mongodb-primary" {
+  project = var.project_id
+  name = "mongodb-primary"
+  machine_type = var.mongo_machine_type
+  zone = "${var.region}-a"
+
+  boot_disk {
+    initialize_params {
+      image = module.gce-container-mongodb.source_image
+      size = 10
+    }
+  }
+
+  network_interface {
+    subnetwork = google_compute_subnetwork.vpc-sub-network.id
+    network_ip = google_compute_address.mongodb-primary-internal.address
+  }
+
+  attached_disk {
+    source = google_compute_disk.mongodb-primary-disk.self_link
+    device_name = "data-disk"
+    mode = "READ_WRITE"
+  }
+
+  metadata = merge(local.additional_metadata, tomap({
+    gce-container-declaration = module.gce-container-mongodb.metadata_value,
+  }))
+
+  labels = {
+    gce-container = module.gce-container-mongodb.vm_container_label
+  }
+
+  service_account {
+    scopes = local.service_account_scopes
+  }
+
+  tags = [
+    "gce-container-mongodb",
+    "gce-container-mongodb-disk-instance"]
+
+  lifecycle {
+    ignore_changes = [
+      metadata,
+      enable_display,
+      boot_disk["initialize_params"],
+      labels,
+    ]
+  }
+}
+
+resource "google_compute_address" "slave-ip-1" {
+  subnetwork = google_compute_subnetwork.vpc-sub-network.id
+  address_type = "INTERNAL"
+  name = "mongodb-secondary-1"
+}
+resource "google_compute_address" "slave-ip-2" {
+  subnetwork = google_compute_subnetwork.vpc-sub-network.id
+  address_type = "INTERNAL"
+  name = "mongodb-secondary-2"
+}
+
+resource "google_compute_disk" "slave-disk-1" {
+  name = "mongodb-secondary-disk-1"
+  type = "pd-ssd"
+  zone = "${var.region}-a"
+  size = var.mongo_disk_size
+  physical_block_size_bytes = 4096
+}
+
+resource "google_compute_disk" "slave-disk-2" {
+  name = "mongodb-secondary-disk-2"
+  type = "pd-ssd"
+  zone = "${var.region}-a"
+  size = var.mongo_disk_size
+  physical_block_size_bytes = 4096
+}
+
+resource "google_compute_instance" "mongodb_secondary-1" {
+  project = var.project_id
+  name = "mongodb-secondary-1"
+  machine_type = var.mongo_machine_type
+  zone = "${var.region}-a"
+
+  boot_disk {
+    initialize_params {
+      image = module.gce-container-mongodb.source_image
+      size = 10
+    }
+  }
+
+  attached_disk {
+    source = google_compute_disk.slave-disk-1.self_link
+    device_name = "data-disk"
+    mode = "READ_WRITE"
+  }
+
+  network_interface {
+    subnetwork = google_compute_subnetwork.vpc-sub-network.id
+    network_ip = google_compute_address.slave-ip-1.address
+  }
+
+  metadata = merge(local.additional_metadata, tomap({
+    gce-container-declaration = module.gce-container-mongodb.metadata_value,
+  }))
+
+  labels = {
+    gce-container = module.gce-container-mongodb.vm_container_label
+  }
+  service_account {
+    scopes = local.service_account_scopes
+  }
+
+  tags = [
+    "gce-container-mongodb",
+    "gce-container-mongodb-disk-instance"]
+
+  lifecycle {
+    ignore_changes = [
+      metadata,
+      enable_display,
+      boot_disk["initialize_params"],
+      labels,
+    ]
+  }
+}
+
+resource "google_compute_instance" "mongodb_secondary-2" {
+  project = var.project_id
+  name = "mongodb-secondary-2"
+  machine_type = var.mongo_machine_type
+  zone = "${var.region}-a"
+
+  boot_disk {
+    initialize_params {
+      image = module.gce-container-mongodb.source_image
+      size = 10
+    }
+  }
+
+  attached_disk {
+    source = google_compute_disk.slave-disk-2.self_link
+    device_name = "data-disk"
+    mode = "READ_WRITE"
+  }
+
+  network_interface {
+    subnetwork = google_compute_subnetwork.vpc-sub-network.id
+    network_ip = google_compute_address.slave-ip-2.address
+  }
+
+  metadata = merge(local.additional_metadata, tomap({
+    gce-container-declaration = module.gce-container-mongodb.metadata_value,
+  }))
+
+  labels = {
+    gce-container = module.gce-container-mongodb.vm_container_label
+  }
+
+  service_account {
+    scopes = local.service_account_scopes
+  }
+
+  tags = [
+    "gce-container-mongodb",
+    "gce-container-mongodb-disk-instance"]
+
+  lifecycle {
+    ignore_changes = [
+      metadata,
+      enable_display,
+      boot_disk["initialize_params"],
+      labels,
+    ]
+  }
+}
+
+resource "google_compute_firewall" "http-mongodb-access" {
+  name = "${var.project_id}-mongodb-access"
+  project = var.project_id
+  network = google_compute_network.vpc-network.id
+
+  allow {
+    protocol = "tcp"
+    ports = [
+      27017]
+  }
+
+  source_ranges = [
+    # TODO what is thi IP ?
+    "10.122.46.0/24",
+    var.vpc_range,
+    var.vpc_subnetwork_range_1,
+    var.vpc_subnetwork_range_2]
+  target_tags = [
+    "gce-container-mongodb"]
+}
+
+output "mongo-master-ip" {
+  value = google_compute_instance.mongodb-primary.network_interface.0.network_ip
+  description = "mongo-master"
+}
+
+output "mongo-uri" {
+  value = local.mongodb_uri
+  description = "Mongo connection URI"
+}
+
+output "configure-rs-command" {
+  value = data.template_file.mongo_init_rs_command.rendered
+  description = "Run command to configure replicaset"
+}
+
+output "configure-users-command" {
+  value = data.template_file.mongo_init_create_db.rendered
+  description = "Run command to configure users"
+}

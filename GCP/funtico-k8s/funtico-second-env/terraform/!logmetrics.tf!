@@ -1,0 +1,283 @@
+resource "google_logging_metric" "bo-api-errors" {
+  description = "bo-api errors"
+  name   = "bo-api-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/BACKOFFICE_API"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "bo-fe-errors" {
+  description = "bo-fe errors"
+  name   = "bo-fe-errors"
+  filter = <<-EOT
+           resource.type="k8s_container"
+           resource.labels.project_id="${var.project_id}"
+           resource.labels.location="${var.region}"
+           resource.labels.cluster_name="${var.project_id}-gke"
+           resource.labels.namespace_name="production"
+           labels.k8s-pod/app="backoffice-fe"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "client-fe-errors" {
+  description = "client-fe errors"
+  name   = "client-fe-errors"
+  filter = <<-EOT
+           resource.type="k8s_container"
+           resource.labels.project_id="${var.project_id}"
+           resource.labels.location="${var.region}"
+           resource.labels.cluster_name="${var.project_id}-gke"
+           resource.labels.namespace_name="production"
+           labels.k8s-pod/app="client-fe"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "client-api-errors" {
+  description = "client-api errors"
+  name   = "client-api-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/CLIENT_API"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "game-core-api-errors" {
+  description = "game-core-api errors"
+  name   = "game-core-api-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/CORE"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "game-core-worker-errors" {
+  description = "game-core-worker errors"
+  name   = "game-core-worker-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/CORE_WORKER"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "client-socketio-node" {
+  description = "client-socketio-node errors"
+  name   = "client-socketio-node-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/SOCKETIO_NODE"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "monitoring-api-errors" {
+  description = "monitoring-api errors"
+  name   = "monitoring-api-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/MONITORING_API"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "monitoring-worker" {
+  description = "monitoring-worker errors"
+  name   = "monitoring-worker-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/MONITORING_WORKER"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "operator-factory" {
+  description = "operator-factory errors"
+  name   = "operator-factory-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/OPERATOR_FACTORY"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "mongodb-auth-failed" {
+  description = "MongoDB number of authentication failed attempts"
+  name   = "mongodb-auth-failed-count"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/cos_containers"
+           jsonPayload.c="ACCESS"
+           jsonPayload.msg="Authentication failed"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "video-service-errors" {
+  description = "Video service error count"
+  name   = "video-service-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/CORE"
+           severity=ERROR
+           jsonPayload.message="Video API Error"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "operator-api-errors" {
+  description = "Operator API errors"
+  name   = "operator-api-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/OPERATOR_FACTORY"
+           severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "launchUrlCreatorAvailability-errors" {
+  description = "Launch Url Creator Availability errors"
+  name   = "launchUrlCreatorAvailability-errors"
+  filter = <<-EOT
+           logName="projects/${var.project_id}/logs/MONITORING_WORKER"
+           severity=ERROR
+           jsonPayload.message="launchUrlCreatorAvailabilityError"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+resource "google_logging_metric" "rabbitmq-errors" {
+  description = "RabbitMQ errors"
+  name   = "rabbitmq-errors"
+  filter = <<-EOT
+              resource.type="k8s_container"
+              resource.labels.project_id="${var.project_id}"
+              resource.labels.location="${var.region}"
+              resource.labels.cluster_name="${var.project_id}-gke"
+              resource.labels.container_name="rabbitmq-k8s"
+              severity=ERROR
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+# resource "google_logging_metric" "sql-db-disconnect" {
+#   description = "SQL database disconnect"
+#   name   = "sql-db-disconnect"
+#   filter = <<-EOT
+#            severity=ERROR
+#            jsonPayload.message="SQL database connection lost. Reconnecting..."
+#            jsonPayload.metadata.nodeId != ""
+#            EOT
+#   metric_descriptor {
+#     metric_kind = "DELTA"
+#     value_type  = "INT64"
+#   }
+
+#   lifecycle {
+#     ignore_changes = [filter]
+#   }
+# }

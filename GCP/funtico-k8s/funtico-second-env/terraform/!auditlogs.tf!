@@ -1,0 +1,149 @@
+#AS-1799 Audit Configuration Logging
+resource "google_logging_metric" "auditlog-configration-changes" {
+  description = "Auditlog configuration changes"
+  name   = "auditlog-changes-count"
+  filter = <<-EOT
+            protoPayload.methodName="SetIamPolicy"
+            AND protoPayload.serviceData.policyDelta.auditConfigDeltas:*
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+#AS-1799 Project Ownership Logging
+resource "google_logging_metric" "auditlog-project-ownership-changes" {
+  description = "Project Ownership changes"
+  name   = "auditlog-projects-ownership-changes-count"
+  filter = <<-EOT
+            (protoPayload.serviceName="cloudresourcemanager.googleapis.com")
+              AND (ProjectOwnership OR projectOwnerInvitee)
+              OR (protoPayload.serviceData.policyDelta.bindingDeltas.action="REMOVE" AND protoPayload.serviceData.policyDelta.bindingDeltas.role="roles/owner")
+              OR (protoPayload.serviceData.policyDelta.bindingDeltas.action="ADD" AND protoPayload.serviceData.policyDelta.bindingDeltas.role="roles/owner")
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+#AS-1799 Custom Role Logging
+resource "google_logging_metric" "auditlog-role-configuration-changes" {
+  description = "Role configuration changes"
+  name   = "auditlog-role-configuration-changes-count"
+  filter = <<-EOT
+              resource.type="iam_role"
+              AND protoPayload.methodName = "google.iam.admin.v1.CreateRole"
+              OR protoPayload.methodName="google.iam.admin.v1.DeleteRole"
+              OR protoPayload.methodName="google.iam.admin.v1.UpdateRole"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+
+#AS-1799 SQL Configuration Logging
+resource "google_logging_metric" "auditlog-sql-configuration-changes" {
+  description = "SQL Configuration changes"
+  name   = "auditlog-sql-configuration-changes-count"
+  filter = <<-EOT
+              protoPayload.methodName="cloudsql.instances.update"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+#AS-1799 Storage Permissions Logging
+resource "google_logging_metric" "auditlog-storage-permission-configuration-changes" {
+  description = "Storage permission configuration changes"
+  name   = "auditlog-storage-permission-configuration-changes-count"
+  filter = <<-EOT
+              resource.type=gcs_bucket AND protoPayload.methodName="storage.setIamPermissions"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+#AS-1799 VPC Firewall Rule Logging
+resource "google_logging_metric" "auditlog-vpc-firewall-configuration-changes" {
+  description = "VPC Firewall Rule configuration changes"
+  name   = "auditlog-vpc-firewall-configuration-changes-count"
+  filter = <<-EOT
+            resource.type="gce_firewall_rule"
+            AND jsonPayload.event_subtype="compute.firewalls.patch"
+            OR jsonPayload.event_subtype="compute.firewalls.insert"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+#AS-1799 VPC Network Route Logging
+resource "google_logging_metric" "auditlog-vpc-network-route-configuration-changes" {
+  description = "VPC Network Route configuration changes"
+  name   = "auditlog-vpc-network-route-configuration-changes-count"
+  filter = <<-EOT
+            resource.type="gce_route"
+            AND jsonPayload.event_subtype="compute.routes.delete"
+            OR jsonPayload.event_subtype="compute.routes.insert"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}
+
+#AS-1799 VPC Network Logging
+resource "google_logging_metric" "auditlog-vpc-network-configuration-changes" {
+  description = "VPC Network configuration changes"
+  name   = "auditlog-vpc-network-configuration-changes-count"
+  filter = <<-EOT
+            resource.type=gce_network AND jsonPayload.event_subtype="compute.networks.insert"
+            OR jsonPayload.event_subtype="compute.networks.patch" OR jsonPayload.event_subtype="compute.networks.delete"
+            OR jsonPayload.event_subtype="compute.networks.removePeering" OR jsonPayload.event_subtype="compute.networks.addPeering"
+           EOT
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+
+  lifecycle {
+    ignore_changes = [filter]
+  }
+}

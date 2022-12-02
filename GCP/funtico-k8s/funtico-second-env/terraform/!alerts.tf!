@@ -1,0 +1,1096 @@
+resource "google_monitoring_notification_channel" "email-shaul-peled" {
+  display_name = "shaul.peled@arcadiagaming.io"
+  type         = "email"
+  labels = {
+    email_address = "shaul.peled@arcadiagaming.io"
+  }
+}
+
+resource "google_monitoring_notification_channel" "email-kashnikoviche" {
+  display_name = "kashnikoviche@mydigicode.com"
+  type         = "email"
+  labels = {
+    email_address = "kashnikoviche@mydigicode.com"
+  }
+}
+
+resource "google_monitoring_notification_channel" "email-arcadia-support" {
+  display_name = "arcadia.support@mydigicode.com"
+  type         = "email"
+  labels = {
+    email_address = "arcadia.support@mydigicode.com"
+  }
+}
+
+resource "google_monitoring_alert_policy" "low-disk-space" {
+  display_name = "Low disk space"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "Cloud SQL Disk quota"
+    condition_threshold {
+      filter          = "metric.type=\"cloudsql.googleapis.com/database/disk/quota\" resource.type=\"cloudsql_database\""
+      threshold_value = "10000000000"
+      duration        = "0s"
+      comparison      = "COMPARISON_LT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+  conditions {
+    display_name = "RabbitMQ disk space"
+    condition_threshold {
+      filter          = "metric.type=\"custom.googleapis.com/rabbitmq/disk_space_available_bytes\" resource.type=\"k8s_pod\""
+      threshold_value = "2800000000"
+      duration        = "0s"
+      comparison      = "COMPARISON_LT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Node storage usage"
+    condition_threshold {
+      filter          = "metric.type=\"kubernetes.io/node/ephemeral_storage/used_bytes\" resource.type=\"k8s_node\""
+      threshold_value = "70000000000"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+}
+
+resource "google_monitoring_alert_policy" "cpu-util" {
+  display_name = "Too high CPU utilization"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "Cloud SQL CPU utilization"
+    condition_threshold {
+      filter          = "metric.type=\"cloudsql.googleapis.com/database/cpu/utilization\" resource.type=\"cloudsql_database\""
+      threshold_value = "0.7"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "CPU utilization for mongo"
+    condition_threshold {
+      filter          = "metric.type=\"compute.googleapis.com/instance/cpu/utilization\" resource.type=\"gce_instance\" metric.label.\"instance_name\"=starts_with(\"mongo\")"
+      threshold_value = "0.7"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "CPU usage time for rabbitmq"
+    condition_threshold {
+      filter          = "metric.type=\"kubernetes.io/container/cpu/core_usage_time\" resource.type=\"k8s_container\" resource.label.\"container_name\"=starts_with(\"rabbitmq\")"
+      threshold_value = "0.7"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_RATE"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Node CPU usage"
+    condition_threshold {
+      filter          = "metric.type=\"kubernetes.io/node/cpu/core_usage_time\" resource.type=\"k8s_node\""
+      threshold_value = "1.5"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_RATE"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+}
+
+resource "google_monitoring_alert_policy" "ram-util" {
+  display_name = "Too high memory usage"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "Cloud SQL Memory usage"
+    condition_threshold {
+      filter          = "metric.type=\"cloudsql.googleapis.com/database/memory/utilization\" resource.type=\"cloudsql_database\""
+      threshold_value = "0.8"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Redis Used Memory"
+    condition_threshold {
+      filter          = "metric.type=\"redis.googleapis.com/stats/memory/usage_ratio\" resource.type=\"redis_instance\""
+      threshold_value = "0.8"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Memory usage for rabbitmq"
+    condition_threshold {
+      filter          = "metric.type=\"kubernetes.io/container/memory/limit_utilization\" resource.type=\"k8s_container\" resource.label.\"namespace_name\"=\"rabbitmq\" resource.label.\"container_name\"=starts_with(\"rabbitmq\")"
+      threshold_value = "0.8"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Node Memory usage"
+    condition_threshold {
+      filter          = "metric.type=\"kubernetes.io/node/memory/allocatable_utilization\" resource.type=\"k8s_node\""
+      threshold_value = "0.8"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+}
+
+resource "google_monitoring_alert_policy" "connections" {
+  display_name = "Too many connections"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "Cloud SQL Connections"
+    condition_threshold {
+      filter          = "metric.type=\"cloudsql.googleapis.com/database/network/connections\" resource.type=\"cloudsql_database\""
+      threshold_value = "120"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Redis Connections"
+    condition_threshold {
+      filter          = "metric.type=\"redis.googleapis.com/clients/connected\" resource.type=\"redis_instance\""
+      threshold_value = "300"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "RabbitMQ connections"
+    condition_threshold {
+      filter          = "metric.type=\"custom.googleapis.com/rabbitmq/connections_opened_total\" resource.type=\"k8s_pod\""
+      threshold_value = "120"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_RATE"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+}
+
+resource "google_monitoring_alert_policy" "availability" {
+  display_name = "Services availability check"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "Cloud SQL availability check"
+    condition_threshold {
+      filter          = "metric.type=\"cloudsql.googleapis.com/database/network/connections\" resource.type=\"cloudsql_database\""
+      threshold_value = "1"
+      duration        = "180s"
+      comparison      = "COMPARISON_LT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Redis availability check"
+    condition_threshold {
+      filter          = "metric.type=\"redis.googleapis.com/clients/connected\" resource.type=\"redis_instance\""
+      threshold_value = "1"
+      duration        = "180s"
+      comparison      = "COMPARISON_LT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "RabbitMQ availability check"
+    condition_threshold {
+      filter          = "metric.type=\"custom.googleapis.com/rabbitmq/connections\" resource.type=\"k8s_pod\""
+      threshold_value = "1"
+      duration        = "0s"
+      comparison      = "COMPARISON_LT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_MEAN"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Mongo availability check"
+    condition_threshold {
+      filter          = "metric.type=\"compute.googleapis.com/instance/cpu/utilization\" resource.type=\"gce_instance\" metric.label.\"instance_name\"=starts_with(\"mongo\")"
+      threshold_value = "0.000001"
+      duration        = "0s"
+      comparison      = "COMPARISON_LT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "Services check"
+    condition_threshold {
+      filter          = "metric.type=\"kubernetes.io/container/restart_count\" resource.type=\"k8s_container\" resource.label.\"namespace_name\"=\"production\""
+      threshold_value = "0.5"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_RATE"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+}
+
+resource "google_monitoring_alert_policy" "bo-errors" {
+  display_name = "Backoffice alerts"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "bo-api errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/bo-api-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "bo-fe errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/bo-fe-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  documentation {
+    content   = "check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+
+resource "google_monitoring_alert_policy" "client-errors" {
+  display_name = "Client alerts"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "client-fe errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/client-fe-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "client-api errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/client-api-errors\" resource.type=\"k8s_container\""
+      threshold_value = "10"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "client-socketio-node errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/client-socketio-node-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  documentation {
+    content   = "check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "game-core-errors" {
+  display_name = "Game core alerts"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "game-core-api errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/game-core-api-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "game-core-worker errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/game-core-worker-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  documentation {
+    content   = "check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "monitoring-errors" {
+  display_name = "Monitoring alerts"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "monitoring-api errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/monitoring-api-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  conditions {
+    display_name = "monitoring-worker errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/monitoring-worker-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  documentation {
+    content   = "check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+
+resource "google_monitoring_alert_policy" "operator-errors" {
+  display_name = "Operator alerts"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "operator-factory errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/operator-factory-errors\" resource.type=\"k8s_container\""
+      threshold_value = "2"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+      trigger {
+        count   = 10
+        percent = 0
+      }
+    }
+  }
+
+  documentation {
+    content   = "check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "launchUrlCreatorAvailability-errors" {
+  display_name = "LaunchUrl Creator Availability errors"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "launchUrlCreatorAvailability errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/launchUrlCreatorAvailability-errors\" resource.type=\"k8s_container\""
+      threshold_value = "0.1"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  documentation {
+    content   = "Check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "operator-api-errors" {
+  display_name = "Operator API errors"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "operator-api-errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/operator-api-errors\" resource.type=\"k8s_container\""
+      threshold_value = "0.1"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  documentation {
+    content   = "Check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "video-service-errors" {
+  display_name = "Video service errors"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "video-service-errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/video-service-errors\" resource.type=\"k8s_container\""
+      threshold_value = "0.1"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  documentation {
+    content   = "Check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "mongo-auth-errors" {
+  display_name = "Mongo auth alerts"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "MongoDB Auth Errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/mongodb-auth-failed-count\" resource.type=\"gce_instance\""
+      threshold_value = "1"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "60s"
+        group_by_fields      = []
+        cross_series_reducer = "REDUCE_SUM"
+        per_series_aligner   = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  documentation {
+    content   = "check logs"
+    mime_type = "text/markdown"
+  }
+}
+
+
+resource "google_monitoring_alert_policy" "sql-replication-lag" {
+  display_name = "SQL Replication Lag"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "SQL Replication Lag"
+    condition_threshold {
+      filter          = "metric.type=\"cloudsql.googleapis.com/database/replication/replica_lag\" resource.type=\"cloudsql_database\""
+      threshold_value = "0"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "60s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+      trigger {
+        count   = 1
+        percent = 0
+      }
+    }
+  }
+
+  documentation {
+    content   = "Number of seconds the read replica is behind its primary (approximation)."
+    mime_type = "text/markdown"
+  }
+}
+
+# resource "google_monitoring_alert_policy" "sql-connection-lost" {
+#   display_name = "SQL Connection Lost"
+#   combiner     = "OR"
+#   notification_channels = [
+#     google_monitoring_notification_channel.email-shaul-peled.id,
+#     google_monitoring_notification_channel.email-kashnikoviche.id,
+#     google_monitoring_notification_channel.email-arcadia-support.id
+#   ]
+#   lifecycle {
+#     ignore_changes = [notification_channels]
+#   }
+#   conditions {
+#     display_name = "SQL Connection Lost"
+#     condition_threshold {
+#       filter     = "metric.type=\"logging.googleapis.com/user/sql-db-disconnect\" resource.type=\"k8s_container\""
+#       threshold_value = "0"
+#       duration = "0s"
+#       comparison = "COMPARISON_GT"
+#       aggregations {
+#         alignment_period   = "60s"
+#         group_by_fields    = []
+#         per_series_aligner   = "ALIGN_MEAN"
+#       }
+#       trigger {
+#         count   = 1
+#         percent = 0
+#       }
+#     }
+#   }
+
+#   documentation {
+#     content   = "SQL database is unreachable."
+#     mime_type = "text/markdown"
+#   }
+# }
+
+
+resource "google_monitoring_alert_policy" "rabbitmq-errors" {
+  display_name = "Rabbit MQ errors"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "rabbit-mq errors"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/rabbitmq-errors\" resource.type=\"k8s_container\""
+      threshold_value = "0.5"
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period     = "300s"
+        group_by_fields      = []
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  documentation {
+    content   = "Check Rabbit MQ logs"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "interconnect-sent-bytes-drop" {
+  display_name = "Interconnect bytes sent drop"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "Interconnect bytes sent drop below"
+    condition_threshold {
+      filter          = "metric.type=\"interconnect.googleapis.com/network/attachment/sent_bytes_count\" resource.type=\"interconnect_attachment\""
+      threshold_value = "0.001"
+      duration        = "300s"
+      comparison      = "COMPARISON_LT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_RATE"
+      }
+    }
+  }
+
+  documentation {
+    content   = "Check interconnect settings"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "bgp-status" {
+  display_name = "Interconnect BGP Down"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "Interconnect BGP Down"
+    condition_threshold {
+      filter          = "metric.type=\"router.googleapis.com/bgp/session_up\" resource.type=\"gce_router\""
+      threshold_value = "0.5"
+      duration        = "300s"
+      comparison      = "COMPARISON_LT"
+      aggregations {
+        alignment_period   = "300s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  documentation {
+    content   = "Interconnect BGP session is DOWN"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "mongodb-snapshot-status" {
+  display_name = "MongoDB snapshot last available"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "MongoDB last snapshot time"
+    condition_threshold {
+      filter = "metric.type=\"custom.googleapis.com/${var.project_id}/mongodb/snapshot_created_time_diff_hours\" resource.type=\"generic_task\""
+      #24 + 1 hour(buffer), since snapshot time is calculated once a day
+      threshold_value = "25"
+      duration        = "60s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "60s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  documentation {
+    content   = "MongoDB snapshot was not creates last 24h"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "mongodb-snapshot-size" {
+  display_name = "MongoDB snapshot size"
+  combiner     = "OR"
+  notification_channels = [
+    google_monitoring_notification_channel.email-shaul-peled.id,
+    google_monitoring_notification_channel.email-kashnikoviche.id,
+    google_monitoring_notification_channel.email-arcadia-support.id
+  ]
+  lifecycle {
+    ignore_changes = [notification_channels]
+  }
+  conditions {
+    display_name = "MongoDB snapshot size"
+    condition_threshold {
+      filter = "metric.type=\"custom.googleapis.com/prod-1-298208/mongodb/snapshot_size\" resource.type=\"generic_task\""
+      #150 GB
+      threshold_value = "150000000000"
+      duration        = "60s"
+      comparison      = "COMPARISON_GT"
+      aggregations {
+        alignment_period   = "60s"
+        group_by_fields    = []
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  documentation {
+    content   = "MongoDB snapshot size to high. Disk should be increased"
+    mime_type = "text/markdown"
+  }
+}

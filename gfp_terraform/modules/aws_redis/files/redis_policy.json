@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowClusterPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateCacheCluster",
+        "elasticache:CreateReplicationGroup",
+        "elasticache:DescribeCacheClusters",
+        "elasticache:ModifyCacheCluster",
+        "elasticache:RebootCacheCluster"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

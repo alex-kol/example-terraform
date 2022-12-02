@@ -1,0 +1,326 @@
+resource "google_cloudbuild_trigger" "arcadia-voucher-portal" {
+
+  name = "arcadia-voucher-portal"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = ["frontend/apps/arcadia.voucher.portal/**", "frontend/libs/**"]
+
+  substitutions = {
+    _BASE_URL       = "https://${var.voucher}/api"
+    _API_HOST       = "https://${var.bo}/api"
+    _CLUSTER_NAME   = google_container_cluster.primary.name
+    _ZONE           = var.region
+    _ENV            = "production"
+    _NODE_ENV       = var.NODE_ENV
+    _GSM_PROJECT_ID = var.gsm_project_id
+  }
+
+  filename = "frontend/apps/arcadia.voucher.portal/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "migration-main" {
+
+  name = "migration-main-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  substitutions = {
+    _GSM_PROJECT_ID = var.gsm_project_id
+    _INSTANCE_NAME  = var.mysql_master_name
+  }
+
+  included_files = ["backend/libs/arcadia.dal/src/migrations/**"]
+
+  filename = "backend/libs/arcadia.dal/cloudbuild-main.yaml"
+}
+
+resource "google_cloudbuild_trigger" "migration-audit" {
+
+  name = "migration-audit-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+  substitutions = {
+    _GSM_PROJECT_ID = var.gsm_project_id
+    _INSTANCE_NAME  = var.mysql_master_name
+  }
+
+  included_files = ["backend/libs/arcadia.dal/src/migrationsAudit/**"]
+
+  filename = "backend/libs/arcadia.dal/cloudbuild-audit.yaml"
+}
+
+resource "google_cloudbuild_trigger" "backoffice-api" {
+
+  name = "backoffice-api-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = [
+    "backend/apps/arcadia.backoffice.api/**", "backend/libs/**", "backend/package.json"
+  ]
+
+  substitutions = {
+    _CLUSTER_NAME = google_container_cluster.primary.name
+    _ZONE         = var.region
+    _ENV          = "production"
+  }
+
+  filename = "backend/apps/arcadia.backoffice.api/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "backoffice-fe" {
+
+  name = "backoffice-fe-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = ["frontend/apps/arcadia.backoffice.fe/**", "frontend/libs/**"]
+
+  substitutions = {
+    _API_HOST       = "https://${var.bo}/api"
+    _CLUSTER_NAME   = google_container_cluster.primary.name
+    _ZONE           = var.region
+    _ENV            = "production"
+    _NODE_ENV       = var.NODE_ENV
+    _GSM_PROJECT_ID = var.gsm_project_id
+  }
+
+  filename = "frontend/apps/arcadia.backoffice.fe/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "client-api" {
+
+  name = "client-api-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = ["backend/apps/arcadia.client.api/**", "backend/libs/**", "backend/package.json"]
+
+  substitutions = {
+    _CLUSTER_NAME = google_container_cluster.primary.name
+    _ZONE         = var.region
+    _ENV          = "production"
+  }
+
+  filename = "backend/apps/arcadia.client.api/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "client-fe" {
+
+  name = "client-fe-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = ["frontend/apps/arcadia.coin-pusher.fe/**", "frontend/libs/**"]
+
+  substitutions = {
+    _API_ENDPOINT   = "https://${var.game}"
+    _CLUSTER_NAME   = google_container_cluster.primary.name
+    _ZONE           = var.region
+    _ENV            = "production"
+    _NODE_ENV       = var.NODE_ENV
+    _GSM_PROJECT_ID = var.gsm_project_id
+  }
+
+  filename = "frontend/apps/arcadia.coin-pusher.fe/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "roulette-client-fe" {
+
+  name = "roulette-client-fe-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = ["frontend/apps/arcadia.claw-roulette.fe/**", "frontend/libs/**"]
+
+  substitutions = {
+    _API_ENDPOINT   = "https://${var.game}"
+    _CLUSTER_NAME   = google_container_cluster.primary.name
+    _ZONE           = var.region
+    _ENV            = "production"
+    _NODE_ENV       = var.NODE_ENV
+    _GSM_PROJECT_ID = var.gsm_project_id
+  }
+
+  filename = "frontend/apps/arcadia.claw-roulette.fe/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "socket-node" {
+
+  name = "socket-node-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = [
+    "backend/apps/arcadia.client.socketio.node/**", "backend/libs/**", "backend/package.json"
+  ]
+
+  substitutions = {
+    _CLUSTER_NAME = google_container_cluster.primary.name
+    _ZONE         = var.region
+    _ENV          = "production"
+  }
+
+  filename = "backend/apps/arcadia.client.socketio.node/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "game-core-api" {
+
+  name = "game-core-api-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = [
+    "backend/apps/arcadia.game.core.api/**", "backend/libs/**", "backend/package.json"
+  ]
+
+  substitutions = {
+    _CLUSTER_NAME = google_container_cluster.primary.name
+    _ZONE         = var.region
+    _ENV          = "production"
+  }
+
+  filename = "backend/apps/arcadia.game.core.api/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "game-core-worker" {
+
+  name = "game-core-worker-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = [
+    "backend/apps/arcadia.game.core.worker/**", "backend/libs/**", "backend/package.json"
+  ]
+
+  substitutions = {
+    _CLUSTER_NAME = google_container_cluster.primary.name
+    _ZONE         = var.region
+    _ENV          = "production"
+  }
+
+  filename = "backend/apps/arcadia.game.core.worker/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "monitoring-api" {
+
+  name = "monitoring-api-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = [
+    "backend/apps/arcadia.monitoring.api/**", "backend/libs/**", "backend/package.json"
+  ]
+
+  substitutions = {
+    _CLUSTER_NAME = google_container_cluster.primary.name
+    _ZONE         = var.region
+    _ENV          = "production"
+  }
+
+  filename = "backend/apps/arcadia.monitoring.api/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "monitoring-worker" {
+
+  name = "monitoring-worker-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = [
+    "backend/apps/arcadia.monitoring.worker/**", "backend/libs/**", "backend/package.json"
+  ]
+
+  substitutions = {
+    _CLUSTER_NAME = google_container_cluster.primary.name
+    _ZONE         = var.region
+    _ENV          = "production"
+  }
+
+  filename = "backend/apps/arcadia.monitoring.worker/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "operator-factory" {
+
+  name = "operator-factory-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = [
+    "backend/apps/arcadia.operator.factory/**", "backend/libs/**", "backend/package.json"
+  ]
+
+  substitutions = {
+    _CLUSTER_NAME   = google_container_cluster.primary.name
+    _ZONE           = var.region
+    _ENV            = "production"
+    _GSM_PROJECT_ID = var.gsm_project_id
+  }
+
+  filename = "backend/apps/arcadia.operator.factory/cloudbuild-prod.yaml"
+}
+
+resource "google_cloudbuild_trigger" "operator-management-api" {
+
+  name = "operator-management-api-production"
+
+  trigger_template {
+    branch_name = var.branch_name
+    repo_name   = var.repo_name
+  }
+
+  included_files = [
+    "backend/apps/arcadia.operator.management.api/**", "backend/libs/**", "backend/package.json"
+  ]
+
+  substitutions = {
+    _CLUSTER_NAME = google_container_cluster.primary.name
+    _ZONE         = var.region
+    _ENV          = "production"
+  }
+
+  filename = "backend/apps/arcadia.operator.management.api/cloudbuild-prod.yaml"
+}
