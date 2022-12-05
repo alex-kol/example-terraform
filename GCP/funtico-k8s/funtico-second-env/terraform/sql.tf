@@ -49,42 +49,46 @@ resource "google_sql_database_instance" "master" {
   }
 }
 
-# resource "google_sql_database" "database-main" {
-#   project   = var.project_id
-#   name      = var.DB_MASTER_NAME
-#   instance  = google_sql_database_instance.master.name
-#   charset   = "utf8"
-#   collation = "utf8_general_ci"
-# }
+resource "google_sql_database" "database-main" {
+  project   = var.project_id
+  name      = var.DB_MASTER_NAME
+  count     = var.sql_vm_count
+  instance  = google_sql_database_instance.master[count.index].name
+  charset   = "utf8"
+  collation = "utf8_general_ci"
+}
 
-# resource "google_sql_database" "database-audit" {
-#   project   = var.project_id
-#   name      = var.DB_AUDIT_NAME
-#   instance  = google_sql_database_instance.master.name
-#   charset   = "utf8"
-#   collation = "utf8_general_ci"
-# }
+resource "google_sql_database" "database-audit" {
+  project   = var.project_id
+  name      = var.DB_AUDIT_NAME
+  count     = var.sql_vm_count
+  instance  = google_sql_database_instance.master[count.index].name
+  charset   = "utf8"
+  collation = "utf8_general_ci"
+}
 
-# resource "google_sql_user" "api-user" {
-#   project  = var.project_id
-#   name     = var.mysql_user_api
-#   instance = google_sql_database_instance.master.name
-#   # password = var.DB_MASTER_PSW
-#   host     = "%"
+resource "google_sql_user" "api-user" {
+  project  = var.project_id
+  name     = var.mysql_user_api
+  count    = var.sql_vm_count
+  instance = google_sql_database_instance.master[count.index].name
+  # password = var.DB_MASTER_PSW
+  host     = "%"
 
-#   depends_on = [google_sql_database_instance.master]
-# }
+  # depends_on = [google_sql_database_instance.master[count.index]]
+}
 
-# resource "google_sql_user" "migrations" {
+resource "google_sql_user" "migrations" {
   
-#   project  = var.project_id
-#   name     = var.mysql_user_migration
-#   instance = google_sql_database_instance.master.name
-#   password = var.mysql_root_password
-#   host     = "localhost"
+  project  = var.project_id
+  name     = var.mysql_user_migration
+  count    = var.sql_vm_count
+  instance = google_sql_database_instance.master[count.index].name
+  password = var.mysql_root_password
+  host     = "localhost"
 
-#   depends_on = [google_sql_database_instance.master]
-# }
+  # depends_on = [google_sql_database_instance.master[count.index]]
+}
 
 resource "google_sql_database_instance" "slave" {
   project              = var.project_id
