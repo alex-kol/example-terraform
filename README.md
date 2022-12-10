@@ -1,3 +1,3 @@
 # Example Terraform
-### Siirus
+### Sirius
 
