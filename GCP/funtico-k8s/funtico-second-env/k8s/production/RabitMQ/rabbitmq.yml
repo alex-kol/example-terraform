@@ -1,0 +1,241 @@
+# Need to set {USER} and {PASSWORD}. Lines 19, 20
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production-rabbitmq
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: production-rabbitmq
+data:
+  enabled_plugins: |
+      [rabbitmq_management,rabbitmq_peer_discovery_k8s,rabbitmq_prometheus,rabbitmq_shovel_management,prometheus_rabbitmq_exporter].
+  rabbitmq.conf: |
+      loopback_users.guest=false
+      default_user={USER}
+      default_pass={PASSWORD}
+      cluster_formation.peer_discovery_backend=rabbit_peer_discovery_k8s
+      cluster_formation.k8s.host=kubernetes.default.svc.cluster.local
+      cluster_formation.k8s.port=443
+      ### cluster_formation.k8s.address_type=ip
+      cluster_formation.k8s.address_type=hostname
+      cluster_formation.node_cleanup.interval=10
+      cluster_formation.node_cleanup.only_log_warning=true
+      cluster_partition_handling=autoheal
+      queue_master_locator=min-masters
+      cluster_formation.randomized_startup_delay_range.min=0
+      cluster_formation.randomized_startup_delay_range.max=2
+      cluster_formation.k8s.service_name=rabbitmq-internal
+      cluster_formation.k8s.hostname_suffix=.rabbitmq-internal.$(NAMESPACE).svc.cluster.local
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rabbitmq
+  namespace: production-rabbitmq
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: endpoint-reader
+  namespace: production-rabbitmq
+rules:
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: endpoint-reader
+  namespace: production-rabbitmq
+subjects:
+- kind: ServiceAccount
+  name: rabbitmq
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: endpoint-reader
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-internal
+  namespace: production-rabbitmq
+  labels:
+    app: rabbitmq
+spec:
+  selector:
+    app: rabbitmq
+  clusterIP: None
+  ports:
+    - name: amqp
+      protocol: TCP
+      port: 5672
+    - name: http
+      protocol: TCP
+      port: 15672
+    - name: prometheus
+      port: 15692
+    - name: clustering
+      port: 25672
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: production-rabbitmq
+  annotations:
+    networking.gke.io/load-balancer-type: "Internal"
+  labels:
+    app: rabbitmq
+    type: LoadBalancer
+spec:
+  selector:
+    app: rabbitmq
+  type: LoadBalancer
+  ports:
+    - name: amqp
+      protocol: TCP
+      port: 5672
+      targetPort: 5672
+    - name: http
+      protocol: TCP
+      port: 15672
+      targetPort: 15672
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: production-rabbitmq
+spec:
+  serviceName: rabbitmq-internal
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+      annotations:
+        scheduler.alpha.kubernetes.io/affinity: >
+            {
+              "podAntiAffinity": {
+                "requiredDuringSchedulingIgnoredDuringExecution": [{
+                  "labelSelector": {
+                    "matchExpressions": [{
+                      "key": "app",
+                      "operator": "In",
+                      "values": ["rabbitmq"]
+                    }]
+                  },
+                  "topologyKey": "kubernetes.io/hostname"
+                }]
+              }
+            }
+    spec:
+      serviceAccountName: rabbitmq
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: rabbitmq-k8s
+        image: gcr.io/funtico-second-env/rabbitmq.prod
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/rabbitmq
+          - name: rabbitmq-data-pvc
+            mountPath: /var/lib/rabbitmq/mnesia
+        ports:
+          - name: amqp
+            protocol: TCP
+            containerPort: 5672
+          - name: http
+            protocol: TCP
+            containerPort: 15672
+          - name: prometheus
+            containerPort: 15692
+          - name: clustering
+            containerPort: 25672
+        livenessProbe:
+          exec:
+            command: ["rabbitmqctl", "status"]
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          exec:
+            command: ["rabbitmqctl", "status"]
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+        imagePullPolicy: Always
+        env:
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: HOSTNAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: RABBITMQ_USE_LONGNAME
+            value: "true"
+          - name: RABBITMQ_NODENAME
+            value: "rabbit@$(HOSTNAME).rabbitmq-internal.$(NAMESPACE).svc.cluster.local"
+          - name: K8S_SERVICE_NAME
+            value: "rabbitmq-internal"
+          - name: RABBITMQ_ERLANG_COOKIE
+            value: "funtico-cookie-erland"
+      - name: prometheus-to-sd
+        image: gcr.io/cloud-marketplace/google/rabbitmq/prometheus-to-sd:3.8
+        ports:
+          - name: profiler
+            containerPort: 6060
+        command:
+          - /monitor
+          - --stackdriver-prefix=custom.googleapis.com
+          - --source=rabbitmq:http://localhost:15692/metrics
+          - --pod-id=$(POD_NAME)
+          - --namespace-id=$(POD_NAMESPACE)
+          - --monitored-resource-type-prefix=k8s_
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+      volumes:
+        - name: config-volume
+          configMap:
+            name: rabbitmq-config
+            items:
+            - key: rabbitmq.conf
+              path: rabbitmq.conf
+            - key: enabled_plugins
+              path: enabled_plugins
+  volumeClaimTemplates:
+    - metadata:
+        name: rabbitmq-data-pvc
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: premium-rwo
+        resources:
+          requests:
+            storage: 10Gi

@@ -2,6 +2,6 @@
 
 source "${0%/*}/00_incl.sh"
 
-cd ../terraform
+cd ./terraform
 
 terraform output

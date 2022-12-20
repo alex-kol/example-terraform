@@ -1,0 +1,13 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: prod-gamefuntico-com
+spec:
+  domains:
+    - game.gamefuntico.com
+    - c2s.gamefuntico.com
+    - s2s.gamefuntico.com
+    - bo.gamefuntico.com
+    - bo-api.gamefuntico.com
+    - history-api.gamefuntico.com
+    - socketio.gamefuntico.com

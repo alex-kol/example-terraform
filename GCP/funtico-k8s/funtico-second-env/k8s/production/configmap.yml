@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-prod
+data:
+  API_VERSION: "1"
+  NODE_ENV: "production"
+  GCP_PROJECT_NUMBER: "79852016368"
+  USE_GCP: "true"
+  GOOGLE_APPLICATION_CREDENTIALS: "/var/secrets/google/key.json"
+  DB_HISTORY_DATABASE: "funtico_history_db"
+  DB_HISTORY_HOST: "10.212.2.10"
+  DB_HISTORY_PORT: "3306"
+  DB_MASTER_DATABASE: "funtico_main_db"
+  DB_MASTER_HOST: "10.212.2.11"
+  DB_MASTER_PORT: "3306"
+  DB_SLAVE_DATABASE: "funtico_main_db"
+  DB_SLAVE_HOST: "10.212.2.66"
+  DB_SLAVE_PORT: "3306"
+  DB_AUDIT_DATABASE: "funtico_audit_db"
+  DB_AUDIT_HOST: "10.212.2.11"
+  DB_AUDIT_PORT: "3306"

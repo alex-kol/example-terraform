@@ -1,0 +1,90 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: funtico-prod-lb
+  namespace: production
+  annotations:
+    ingress.kubernetes.io/force-ssl-redirect: "true"
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "funtico-second-env-production-static-ip"
+    networking.gke.io/managed-certificates: prod-gamefuntico-com
+    networking.gke.io/v1beta1.FrontendConfig: "http-redirect"
+spec:
+  rules:
+    - host: game.gamefuntico.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: game-scratch-production-service
+                port:
+                  number: 80
+            path: /scratch/*
+            pathType: ImplementationSpecific
+          - backend:
+              service:
+                name: game-bingo-production-service
+                port:
+                  number: 80
+            path: /bingo/*
+            pathType: ImplementationSpecific
+    - host: c2s.gamefuntico.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: service-c2s-production-service
+                port:
+                  number: 3000
+            path: /*
+            pathType: ImplementationSpecific
+    - host: s2s.gamefuntico.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: service-s2s-production-service
+                port:
+                  number: 3000
+            path: /*
+            pathType: ImplementationSpecific
+    - host: bo.gamefuntico.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: service-bo-fe-production-service
+                port:
+                  number: 80
+            path: /*
+            pathType: ImplementationSpecific
+    - host: bo-api.gamefuntico.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: service-bo-api-production-service
+                port:
+                  number: 3000
+            path: /*
+            pathType: ImplementationSpecific
+    - host: history-api.gamefuntico.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: service-history-production-service
+                port:
+                  number: 3000
+            path: /*
+            pathType: ImplementationSpecific
+    - host: socketio.gamefuntico.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: client-socketio-node-production-service
+                port:
+                  number: 3000
+            path: /*
+            pathType: ImplementationSpecific

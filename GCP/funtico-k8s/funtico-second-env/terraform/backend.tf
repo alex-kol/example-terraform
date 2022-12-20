@@ -1,9 +1,9 @@
 terraform {
-    
- backend "gcs" {
-  bucket  = "funtico-prod-tf"
-  prefix  = "env/prod"
-  credentials = "./json/tf_service_account.json"
- }
- 
+
+  backend "gcs" {
+    bucket      = "funtico-production-tf"
+    prefix      = "env/production"
+    credentials = "./json/tf_service_account.json"
+  }
+
 }

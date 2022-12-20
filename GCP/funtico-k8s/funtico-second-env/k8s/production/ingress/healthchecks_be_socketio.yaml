@@ -1,0 +1,15 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: backendconfig-be-socketio
+spec:
+  healthCheck:
+    checkIntervalSec: 20
+    timeoutSec: 20
+    healthyThreshold: 1
+    unhealthyThreshold: 2
+    type: HTTP
+    requestPath: /health
+  sessionAffinity:
+    affinityType: "CLIENT_IP"
+  timeoutSec: 10800

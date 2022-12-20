@@ -7,27 +7,27 @@ resource "google_container_cluster" "primary" {
   # We can't create a cluster with no node pool defined, but we want to only use separately managed node pools. So we create the smallest possible default node pool and immediately delete it.
   remove_default_node_pool  = true
   initial_node_count        = 1
-
+  
   network    = google_compute_network.vpc-network.id
-  subnetwork = google_compute_subnetwork.vpc-sub-network.id
+  subnetwork = google_compute_subnetwork.vpc-subnet.id
 
-  # vertical_pod_autoscaling {
-  #   enabled = true
-  # }
+  vertical_pod_autoscaling {
+    enabled = true
+  }
 
-  # cluster_autoscaling {
-  #   enabled = true
-  #   resource_limits {
-  #     resource_type = "cpu"
-  #     minimum       = 4
-  #     maximum       = 28
-  #   }
-  #   resource_limits {
-  #     resource_type = "memory"
-  #     minimum       = 8
-  #     maximum       = 96
-  #   }
-  # }
+  cluster_autoscaling {
+    enabled = true
+    resource_limits {
+      resource_type = "cpu"
+      minimum       = 4
+      maximum       = 28
+    }
+    resource_limits {
+      resource_type = "memory"
+      minimum       = 8
+      maximum       = 96
+    }
+  }
 
   master_auth {
     client_certificate_config {
@@ -42,8 +42,8 @@ resource "google_container_cluster" "primary" {
   }
 
   ip_allocation_policy {
-    cluster_secondary_range_name  = "sub-network-pods"
-    services_secondary_range_name = "sub-network-services"
+    cluster_secondary_range_name  = "subnet-pods"
+    services_secondary_range_name = "subnet-services"
   }
 
   lifecycle {

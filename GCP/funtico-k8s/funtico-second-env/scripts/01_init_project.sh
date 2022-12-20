@@ -6,7 +6,7 @@ source "${0%/*}/00_incl.sh"
 # Configure GCP according to Project Needs
 #
 
-#Enable GCP APIs
+# Enable GCP APIs
 gcloud services enable containerregistry.googleapis.com
 gcloud services enable cloudresourcemanager.googleapis.com
 gcloud services enable servicenetworking.googleapis.com
@@ -20,16 +20,15 @@ gcloud services enable sqladmin.googleapis.com
 gcloud beta services enable redis.googleapis.com
 gcloud beta services enable secretmanager.googleapis.com
 
-#
-##Create Terraform Service Account and Store JSON Credentials in secure place
+# Create Terraform Service Account and Store JSON Credentials in secure place
 gcloud iam service-accounts create terraform \
   --display-name "Terraform admin account"
 
 gcloud iam service-accounts keys create ${credential_path} \
   --iam-account terraform@${project_id}.iam.gserviceaccount.com
 
-#Grant Relevant Permissions to Service Account(to be keeped up-to-date)
-#https://cloud.google.com/iam/docs/understanding-roles
+# Grant Relevant Permissions to Service Account(to be keeped up-to-date)
+# https://cloud.google.com/iam/docs/understanding-roles
 gcloud projects add-iam-policy-binding ${project_id} \
   --member serviceAccount:terraform@${project_id}.iam.gserviceaccount.com \
   --role roles/viewer
@@ -82,7 +81,7 @@ gcloud projects add-iam-policy-binding ${project_id} \
     --member serviceAccount:terraform@${project_id}.iam.gserviceaccount.com \
     --role roles/logging.admin
 
-#for SM only
+# for SM only
 gcloud iam service-accounts create sm-manager \
   --display-name "secret manager account"
 
@@ -93,7 +92,7 @@ gcloud projects add-iam-policy-binding ${project_id} \
     --member serviceAccount:sm-manager@${project_id}.iam.gserviceaccount.com \
     --role roles/secretmanager.secretAccessor
 
-#CloudBuild
+# CloudBuild
 PROJECT_NUM=$(gcloud projects list --filter="${project_id}" --format="value(PROJECT_NUMBER)" --project=${project_id})
 gcloud projects add-iam-policy-binding ${project_id} \
      --member=serviceAccount:${PROJECT_NUM}@cloudbuild.gserviceaccount.com \
@@ -107,33 +106,29 @@ gcloud projects add-iam-policy-binding ${project_id} \
      --member=serviceAccount:${PROJECT_NUM}@cloudbuild.gserviceaccount.com \
      --role=roles/secretmanager.admin
 
-# while true; do
-#     read -p "Please connect now Cloud Build with the repository https://bitbucket.org/caesarea/arcadia-dev/src/master/, type ok when done " ok
-#     if [ "$ok" = "ok" ]; then
-# 	    echo "Thanks" && break
-#     fi
-# done
+while true; do
+    read -p "Please, connect Cloud Build to the repositories now https://bitbucket.org/DigicodeLtd/funtico-platform/src/master/ and https://bitbucket.org/DigicodeLtd/funtico-games/src/master/ type ok when done " ok
+    if [ "$ok" = "ok" ]; then
+	    echo "Thanks" && break
+    fi
+done
 
-#GCStorage for the Terraform states
-gsutil mb -p ${project_id} gs://${tf_state_bucket_name}-tf
+# GCStorage for the Terraform states
+gsutil mb -l ${region} -p ${project_id} gs://${tf_state_bucket_name}-tf
 gsutil versioning set on gs://${tf_state_bucket_name}-tf
 
 cat > ./terraform/backend.tf << EOF
 terraform {
- backend "gcs" {
-  bucket  = "${tf_state_bucket_name}-tf"
-  prefix  = "env/${env_name}"
-  credentials = "./json/tf_service_account.json"
- }
+
+  backend "gcs" {
+    bucket      = "${tf_state_bucket_name}-tf"
+    prefix      = "env/${env_name}"
+    credentials = "./json/tf_service_account.json"
+  }
+
 }
 EOF
 
 echo_red   "\nPlease keep 'GOOGLE_APPLICATION_CREDENTIALS' in secure storage, as this file must be ignored by GIT"
 echo_green "\n===================\nDone. Please double check output to be sure no errors occurred"
 exit
-
-#automatic snapshots schedule
-# gcloud compute resource-policies create snapshot-schedule backup --project=${project_id} --region={region} --max-retention-days=14 --on-source-disk-delete=apply-retention-policy --daily-schedule --start-time=3:00 --storage-location={region}
-
-#ssl certs
-# gcloud compute ssl-certificates create funtico-io --description=arcadiagaming.io --domains=${game} --domains=${bo} --domains=${socketio} --domains=${voucher} --global

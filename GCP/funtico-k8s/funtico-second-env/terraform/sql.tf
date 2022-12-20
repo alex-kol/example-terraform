@@ -1,17 +1,18 @@
 resource "google_sql_database_instance" "master" {
+  for_each            = toset(var.names_vm_sql)
+
   project             = var.project_id
-  name                = "${var.project_id}-master-${count.index}"
-  count               = var.sql_vm_count
+  name                = "${each.key}-master"
   database_version    = "MYSQL_8_0"
   region              = var.region
-  deletion_protection = false
+  deletion_protection = false # set to true to prevent destruction of the resource
 
   depends_on = [google_service_networking_connection.private_vpc_connection]
 
   settings {
     tier              = var.gcs_machine_type
     availability_type = "REGIONAL"
-    disk_size         = "200"
+    disk_size         = var.disk_size_sql
 
     database_flags {
       name  = "wait_timeout"
@@ -39,6 +40,22 @@ resource "google_sql_database_instance" "master" {
       ipv4_enabled    = true
       require_ssl     = false
       private_network = google_compute_network.vpc-network.id
+
+      dynamic "authorized_networks" {
+        for_each = local.white_list
+        iterator = white_list
+
+        content {
+          name  = "VPN DigiCode-${white_list.key}"
+          value = white_list.value
+        }
+      }
+
+      # authorized_networks {
+      #   name  = "External Access"
+      #   value = "0.0.0.0/0"
+      # }
+
     }
   }
 
@@ -49,52 +66,12 @@ resource "google_sql_database_instance" "master" {
   }
 }
 
-resource "google_sql_database" "database-main" {
-  project   = var.project_id
-  name      = var.DB_MASTER_NAME
-  count     = var.sql_vm_count
-  instance  = google_sql_database_instance.master[count.index].name
-  charset   = "utf8"
-  collation = "utf8_general_ci"
-}
-
-resource "google_sql_database" "database-audit" {
-  project   = var.project_id
-  name      = var.DB_AUDIT_NAME
-  count     = var.sql_vm_count
-  instance  = google_sql_database_instance.master[count.index].name
-  charset   = "utf8"
-  collation = "utf8_general_ci"
-}
-
-resource "google_sql_user" "api-user" {
-  project  = var.project_id
-  name     = var.mysql_user_api
-  count    = var.sql_vm_count
-  instance = google_sql_database_instance.master[count.index].name
-  # password = var.DB_MASTER_PSW
-  host     = "%"
-
-  # depends_on = [google_sql_database_instance.master[count.index]]
-}
-
-resource "google_sql_user" "migrations" {
-  
-  project  = var.project_id
-  name     = var.mysql_user_migration
-  count    = var.sql_vm_count
-  instance = google_sql_database_instance.master[count.index].name
-  password = var.mysql_root_password
-  host     = "localhost"
-
-  # depends_on = [google_sql_database_instance.master[count.index]]
-}
-
 resource "google_sql_database_instance" "slave" {
+  for_each             = toset(var.names_vm_sql)
+  
   project              = var.project_id
-  name                 = "${var.project_id}-slave-${count.index}"
-  count                = var.sql_vm_count
-  master_instance_name = google_sql_database_instance.master[count.index].name
+  name                 = "${each.key}-slave"
+  master_instance_name = google_sql_database_instance.master[each.key].name
   region               = var.region
   database_version     = "MYSQL_8_0"
   deletion_protection  = false
@@ -106,7 +83,7 @@ resource "google_sql_database_instance" "slave" {
   settings {
     tier              = var.gcs_machine_type
     availability_type = "ZONAL"
-    disk_size         = "200"
+    disk_size         = var.disk_size_sql
 
     database_flags {
       name  = "wait_timeout"
@@ -136,8 +113,8 @@ resource "google_sql_database_instance" "slave" {
       ipv4_enabled    = false
       require_ssl     = false
       private_network = google_compute_network.vpc-network.id
+      
     }
-
   }
 
   lifecycle {
