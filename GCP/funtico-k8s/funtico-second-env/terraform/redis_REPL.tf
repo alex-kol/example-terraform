@@ -11,18 +11,8 @@ resource "google_redis_instance" "redis" {
   display_name       = "Redis"
   redis_version      = var.redis_version
   memory_size_gb     = var.redis_ram_size_gb
-
-  maintenance_policy {
-    weekly_maintenance_window {
-      day = "MONDAY"
-      start_time {
-        hours = 6
-        minutes = 0
-        seconds = 0
-        nanos = 0
-      }
-    }
-  }
+  replica_count      = var.redis_replica # Read replicas are only supported on instance sizes 5GB and above
+  read_replicas_mode = "READ_REPLICAS_ENABLED"
 
   depends_on = [google_service_networking_connection.private_vpc_connection]
 }

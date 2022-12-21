@@ -5,7 +5,7 @@ resource "google_sql_database_instance" "master" {
   name                = "${each.key}-master"
   database_version    = "MYSQL_8_0"
   region              = var.region
-  deletion_protection = true # set to true to prevent destruction of the resource
+  deletion_protection = false # set to true to prevent destruction of the resource
 
   depends_on = [google_service_networking_connection.private_vpc_connection]
 
@@ -25,19 +25,15 @@ resource "google_sql_database_instance" "master" {
     }
 
     backup_configuration {
-      location                       = "eu"
-      enabled                        = true
-      binary_log_enabled             = true
-      start_time                     = "02:00"
-      transaction_log_retention_days = 7
-      backup_retention_settings {
-        retained_backups = "20"
-      }
+      location           = "eu"
+      enabled            = true
+      binary_log_enabled = true
+      start_time         = "04:00"
     }
 
     maintenance_window {
       day  = 1
-      hour = 6
+      hour = 0
     }
 
     ip_configuration {
@@ -54,6 +50,11 @@ resource "google_sql_database_instance" "master" {
           value = white_list.value
         }
       }
+
+      # authorized_networks {
+      #   name  = "External Access"
+      #   value = "0.0.0.0/0"
+      # }
 
     }
   }
